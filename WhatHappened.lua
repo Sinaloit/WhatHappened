@@ -126,6 +126,7 @@ function WhatHappened:OnInitialize()
     --Combat Event Handlers
     Apollo.RegisterEventHandler("CombatLogDamage", "OnCombatLogDamage", self)
     Apollo.RegisterEventHandler("CombatLogDeath", "OnDeath", self)
+    Apollo.RegisterEventHandler("UnitEnteredCombat", "OnEnteredCombat", self)
 
     -- Configuration Event Handlers
     Apollo.RegisterEventHandler("InterfaceMenuListHasLoaded", "OnInterfaceMenuListHasLoaded", self)
@@ -150,18 +151,17 @@ function WhatHappened:OnEnable()
     wndColorList:ArrangeChildrenVert(0)
 
     -- Setup ICComm
-    if self.db.profile.ICChannel then
+    if self.db.profile.ICChannel and self.db.profile.ICChannel ~= "" then
         self.ICCommChannel = ICCommLib.JoinChannel(self.db.profile.ICChannel, "OnMsgRecieved", self)
-        self.wndWhat:FindChild("OptionsSubForm:ChannelSettings:ChannelInput"):SetText(self.db.profile.ICChannel)
     end
+    self.wndWhat:FindChild("OptionsSubForm:ChannelSettings:ChannelInput"):SetText(self.db.profile.ICChannel or "")
     self.wndWhat:FindChild("OptionsSubForm:ChannelSettings:LeaderBtn"):SetCheck(self.db.profile.bRaidLeader)
-
 
     -- Set Current NumMessages
     self.wndWhat:FindChild("OptionsSubForm:CombatHistory:HistoryCount"):SetText(self.db.profile.nNumMessages)
     self.wndWhat:FindChild("OptionsSubForm:CombatHistory:SliderContainer:SliderBar"):SetValue(self.db.profile.nNumMessages)
 
-    -- Prepopulate WhoSelection
+    -- Pre populate WhoSelection
     local strName = GameLib.GetPlayerUnit():GetName()
     self:AddDeathInfo(strName)
     self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
@@ -238,6 +238,12 @@ function WhatHappened:OnDeath()
         tMessage._MINOR = MINOR
         self.ICCommChannel:SendMessage(tMessage)
     end
+end
+
+function WhatHappened:OnEnteredCombat(unitId, bInCombat)
+    if bInCombat or unitId ~= GameLib.GetPlayerUnit() then return end
+    -- We left combat, clear out the queue
+    tCombatQueue = Queue.new()
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -340,9 +346,13 @@ end
 
 function WhatHappened:OnChannelChange(wndHandler, wndControl, strText)
     if not strText or strText == "" then
+        self.db.profile.ICChannel = ""
         self.ICCommChannel = nil
         return
     end
+
+    -- If we se it to the same, don't do anything
+    if self.db.profile.ICChannel == strText then return end
 
     self.db.profile.ICChannel = strText
     self.ICCommChannel = ICCommLib.JoinChannel(strText, "OnMsgRecieved", self)
