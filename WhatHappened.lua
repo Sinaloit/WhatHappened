@@ -1,579 +1,384 @@
---
--- Created by IntelliJ IDEA.
--- User: Gaming
--- Date: 7/26/2014
--- Time: 9:20 PM
--- To change this template use File | Settings | File Templates.
---
-
-
+-----------------------------------------------------------------------------------------------
+-- Client Lua Script for WTF
+-----------------------------------------------------------------------------------------------
+ 
 require "Window"
+require "ChatSystemLib"
 require "ICCommLib"
 require "GroupLib"
 
-local WhatHappened = Apollo.GetPackage("Gemini:Addon-1.1").tPackage:NewAddon("WhatHappened", false)
-local GeminiGUI = Apollo.GetPackage("Gemini:GUI-1.0").tPackage
+-----------------------------------------------------------------------------------------------
+-- Upvalues
+-----------------------------------------------------------------------------------------------
+local MAJOR, MINOR = "WhatHappened-1.0", 1
 
-local tCombatHistory = {first = 0, last = -1}
-local PushCount = 0
-local Push, Pop
---Windows
-local wndMain
-local wndConfig
-local wndRaidLeader
-local wndMainInst
-local wndConfigInst
-local wndRaidLeaderInst
-local wndPlayerNameClickable
+local error, floor, ipairs, pairs, tostring = error, math.floor, ipairs, pairs, tostring
+local strformat = string.format
 
-local tWhatHappenedFormDef = {
-    AnchorOffsets = { 73, 221, 688, 470 },
-    RelativeToClient = true,
-    Font = "CRB_Interface14_O",
-    BGColor = "UI_WindowBGDefault",
-    TextColor = "UI_WindowTextDefault",
-    Template = "Holo_Background_General",
-    Name = "WhatHappenedForm",
-    Border = true,
-    Picture = true,
-    SwallowMouseClicks = true,
-    Moveable = true,
-    Escapable = true,
-    UseTemplateBG = true,
-    NoClip = true,
-    Children = {
-        {
-            AnchorOffsets = { 516, 200, 585, 224 },
-            Class = "Button",
-            Base = "CRB_UIKitSprites:btn_square_LARGE_Red",
-            Font = "DefaultButton",
-            ButtonType = "PushButton",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            BGColor = "UI_BtnBGDefault",
-            TextColor = "UI_BtnTextDefault",
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "btnClose",
-            TextId = "CRB_Close",
-            Events = {
-                ButtonSignal = "OnClose",
-            },
-        },
-        {
-            AnchorOffsets = { 0, 24, 490, 235 },
-            Class = "MLWindow",
-            RelativeToClient = true,
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Template = "Holo_ScrollList",
-            Name = "CombatText",
-            Border = true,
-            VScroll = true,
-            UseTemplateBG = true,
-            UseParentOpacity = true,
-        },
-        {
-            AnchorOffsets = { -10, -9, 498, 26 },
-            Class = "EditBox",
-            RelativeToClient = true,
-            Font = "CRB_Interface14_BBO",
-            Text = "WTF Happened!!",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "Title",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            ReadOnly = true,
-            SizeToFit = false,
-            Password = false,
-            IgnoreMouse = true,
-        },
-        {
-            AnchorOffsets = { 519, 39, 585, 56 },
-            Class = "Button",
-            Base = "CRB_Basekit:kitBtn_ScrollHolo_HorzBarLarge",
-            Font = "CRB_Interface9_BBO",
-            ButtonType = "PushButton",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "btnConfig",
-            Template = "Tooltip",
-            Text = "Config",
-            UseTemplateBG = true,
-            Picture = true,
-            Events = {
-                ButtonSignal = "OnConfig",
-            },
-        },
-    },
-}
-local tConfigFormDef = {
-    AnchorOffsets = { 264, 111, 522, 331 },
-    RelativeToClient = true,
-    BGColor = "UI_WindowBGDefault",
-    TextColor = "UI_WindowTextDefault",
-    Template = "Holo_Background_General",
-    Name = "ConfigForm",
-    Border = true,
-    Picture = true,
-    SwallowMouseClicks = true,
-    Moveable = true,
-    Escapable = true,
-    Overlapped = true,
-    UseTemplateBG = true,
-    Children = {
-        {
-            AnchorOffsets = { -8, -1, 248, 23 },
-            RelativeToClient = true,
-            Font = "CRB_Interface12_BBO",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "Window",
-            TextId = "CRB_Configure",
-            DT_CENTER = true,
-            DT_VCENTER = true,
-        },
-        {
-            AnchorOffsets = { 5, 33, 82, 50 },
-            Class = "EditBox",
-            RelativeToClient = true,
-            Text = "Raid Channel",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "EditBox",
-            ReadOnly = true,
-            SizeToFit = true,
-        },
-        {
-            AnchorOffsets = { 78, 26, 223, 55 },
-            Class = "EditBox",
-            RelativeToClient = true,
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Template = "GreyBevInnerFrame",
-            Name = "RaidChannel",
-            Border = true,
-            UseTemplateBG = true,
-            DefaultTarget = false,
-            DT_CENTER = true,
-            DT_VCENTER = true,
-        },
-        {
-            AnchorOffsets = { 61, 153, 182, 194 },
-            Class = "Button",
-            Base = "BK3:btnHolo_Blue_Small",
-            Font = "DefaultButton",
-            ButtonType = "PushButton",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            BGColor = "UI_BtnBGDefault",
-            TextColor = "UI_BtnTextDefault",
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "btnSave",
-            TextId = "CRB_Save",
-            Border = true,
-            UseWindowTextColor = false,
-            UseTemplateBG = true,
-            Picture = true,
-            RelativeToClient = true,
-            Events = {
-                ButtonSignal = "OnConfigSave",
-            },
-        },
-        {
-            AnchorOffsets = { 52, 101, 212, 130 },
-            Class = "Button",
-            Base = "CRB_Basekit:kitBtn_Radio_Small",
-            Font = "DefaultButton",
-            ButtonType = "Check",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            BGColor = "UI_BtnBGDefault",
-            TextColor = "UI_BtnTextDefault",
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "chkRaidLeader",
-            DrawAsCheckbox = true,
-            Template = "CRB_Default",
-            UseWindowTextColor = true,
-            Text = "Raid Leader Mode",
-            UseTemplateBG = true,
-            GlobalRadioGroup = "",
-        },
-        {
-            AnchorOffsets = { 2, 58, 234, 102 },
-            RelativeToClient = true,
-            Text = "Raid Leader Mode - You will recieve reports from others in the same channel.",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "Window1",
-            DT_CENTER = true,
-            DT_WORDBREAK = true,
-        },
-        {
-            AnchorOffsets = { 52, 133, 192, 162 },
-            Class = "Button",
-            Base = "CRB_Basekit:kitBtn_Radio_Small",
-            Font = "DefaultButton",
-            ButtonType = "Check",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            BGColor = "UI_BtnBGDefault",
-            TextColor = "UI_BtnTextDefault",
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "chkShowOnDeath",
-            DrawAsCheckbox = true,
-            Template = "CRB_Default",
-            UseWindowTextColor = true,
-            Text = "Show On Death",
-            UseTemplateBG = true,
-            GlobalRadioGroup = "",
-        },
-    },
-}
-local tRaidLeaderFormDef = {
-    AnchorOffsets = { 93, 90, 685, 337 },
-    RelativeToClient = true,
-    BGColor = "UI_WindowBGDefault",
-    TextColor = "UI_WindowTextDefault",
-    Template = "Holo_Background_Datachron",
-    Name = "RaidLeaderForm",
-    Border = true,
-    Picture = true,
-    SwallowMouseClicks = true,
-    Moveable = true,
-    Overlapped = true,
-    Children = {
-        {
-            AnchorOffsets = { 10, 35, 154, 234 },
-            RelativeToClient = true,
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Template = "CRB_HologramFramedThin",
-            Name = "RecipientList",
-            Border = true,
-            IgnoreMouse = true,
-            UseTemplateBG = true,
-        },
-        {
-            AnchorOffsets = { 10, 10, 152, 32 },
-            RelativeToClient = true,
-            Font = "CRB_Interface11_BBO",
-            Text = "Recipient List",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "lblRecipientList",
-            DT_CENTER = true,
-            DT_VCENTER = true,
-        },
-        {
-            AnchorOffsets = { 158, 35, 511, 235 },
-            RelativeToClient = true,
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Template = "CRB_HologramFramedThin",
-            Name = "PlayerCombatText",
-            Border = true,
-            IgnoreMouse = true,
-            Picture = true,
-            UseTemplateBG = true,
-        },
-        {
-            AnchorOffsets = { 176, 10, 503, 36 },
-            RelativeToClient = true,
-            Font = "CRB_Interface11_BBO",
-            Text = "WTF, Where you thinking??",
-            BGColor = "UI_WindowBGDefault",
-            TextColor = "UI_WindowTextDefault",
-            Name = "lblWtf",
-            DT_CENTER = true,
-            DT_VCENTER = true,
-        },
-        {
-            AnchorOffsets = { 519, 39, 585, 56 },
-            Class = "Button",
-            Base = "CRB_Basekit:kitBtn_ScrollHolo_HorzBarLarge",
-            Font = "CRB_Interface9_BBO",
-            ButtonType = "PushButton",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "btnConfig",
-            Template = "Tooltip",
-            Text = "Config",
-            UseTemplateBG = true,
-            Picture = true,
-            Events = {
-                ButtonSignal = "OnConfig",
-            },
-        },
-        {
-            AnchorOffsets = { 516, 200, 585, 224 },
-            Class = "Button",
-            Base = "CRB_UIKitSprites:btn_square_LARGE_Red",
-            Font = "DefaultButton",
-            ButtonType = "PushButton",
-            DT_VCENTER = true,
-            DT_CENTER = true,
-            BGColor = "UI_BtnBGDefault",
-            TextColor = "UI_BtnTextDefault",
-            NormalTextColor = "UI_BtnTextDefault",
-            PressedTextColor = "UI_BtnTextDefault",
-            FlybyTextColor = "UI_BtnTextDefault",
-            PressedFlybyTextColor = "UI_BtnTextDefault",
-            DisabledTextColor = "UI_BtnTextDefault",
-            Name = "btnClose",
-            TextId = "CRB_Close",
-            Events = {
-                ButtonSignal = "OnClose",
-            },
-        },
-    },
-}
-local tPlayerNameClickable ={
-    AnchorOffsets = { 3, 2, 123, 25 },
-    RelativeToClient = true,
-    Font = "CRB_Interface10_BBO",
-    BGColor = "UI_WindowBGDefault",
-    TextColor = "UI_WindowTextDefault",
-    Name = "PlayerNameClickable",
-    TextId = "CRB_Player_Name",
-    DT_CENTER = true,
-    DT_VCENTER = true,
-    Events = {
-        MouseButtonUp = "OnClickGetReport",
-    },
+-- Wildstar APIs
+local Apollo, ApolloColor, ApolloTimer, ICCommLib = Apollo, ApolloColor, ApolloTimer, ICCommLib
+local GameLib, XmlDoc = GameLib, XmlDoc
+local Event_FireGenericEvent, Print = Event_FireGenericEvent, Print
+ 
+-----------------------------------------------------------------------------------------------
+-- WTF Module Definition
+-----------------------------------------------------------------------------------------------
+local WhatHappened = Apollo.GetPackage("Gemini:Addon-1.1").tPackage:NewAddon("WhatHappened", false, {"ChatLog"})
+local GeminiColor
 
+-----------------------------------------------------------------------------------------------
+-- Locals
+-----------------------------------------------------------------------------------------------
+-- Array to contain death logs
+local tDeathInfos = {}
+-- Queue for keeping track of Combat events
+local tCombatQueue
+
+-- Array of colors, populated through saved variables
+local tColors = {
+    crWhite = ApolloColor.new("white")
 }
 
+-- ApolloTimer handle
+local atChatTimer
+-- Local function, declared later
+local GenerateLog
+
+-----------------------------------------------------------------------------------------------
+-- Constants
+-----------------------------------------------------------------------------------------------
+-- e.g. local kiExampleVariableMax = 999
+local ktDamageTypeToName = {
+    [GameLib.CodeEnumDamageType.Fall]      = Apollo.GetString("DamageType_Fall"),
+    [GameLib.CodeEnumDamageType.Magic]     = Apollo.GetString("DamageType_Magic"),
+    [GameLib.CodeEnumDamageType.Physical]  = Apollo.GetString("DamageType_Physical"),
+    [GameLib.CodeEnumDamageType.Suffocate] = Apollo.GetString("DamageType_Suffocate"),
+    [GameLib.CodeEnumDamageType.Tech]      = Apollo.GetString("DamageType_Tech"),
+}
+
+local tDBDefaults = {
+    profile = {
+        strFontName  = "Nameplates",
+        nNumMessages = 20,
+        bAttach      = true,
+        bRaidLeader  = false,
+        ICChannel    = "testing",
+        color = {
+            Attacker = "ffffffff",
+            Damage   = "ffffffff",
+            Ability  = "ffffffff",
+        }
+    }
+}
+
+-----------------------------------------------------------------------------------------------
+-- Standard Queue
+-----------------------------------------------------------------------------------------------
+local Queue = {}
+function Queue.new()
+    return {first = 0, last = -1}
+end
+
+function Queue.PushLeft(queue, value)
+    local first = queue.first - 1
+    queue.first = first
+    queue[first] = value
+end
+
+function Queue.PushRight(queue, value)
+    local last = queue.last + 1
+    queue.last = last
+    queue[last] = value
+end
+
+function Queue.PopLeft(queue)
+    local first = queue.first
+    if first > queue.last then error("queue is empty") end
+    local value = queue[first]
+    queue[first] = nil        -- to allow garbage collection
+    queue.first = first + 1
+    return value
+end
+
+function Queue.PopRight(queue)
+    local last = queue.last
+    if queue.first > last then error("queue is empty") end
+    local value = queue[last]
+    queue[last] = nil         -- to allow garbage collection
+    queue.last = last - 1
+    return value
+end
+
+function Queue.Size(queue)
+    return queue.last - queue.first + 1
+end
+
+-----------------------------------------------------------------------------------------------
+-- Startup
+-----------------------------------------------------------------------------------------------
 function WhatHappened:OnInitialize()
+    self.db = Apollo.GetPackage("Gemini:DB-1.0").tPackage:New(self, tDBDefaults, true)
+    GeminiColor = Apollo.GetPackage("GeminiColor").tPackage
 
-    self.SavedData = Apollo.GetPackage("Gemini:DB-1.0").tPackage:New(self,  self.defaults, true)
-
-    wndMain                 = GeminiGUI:Create(tWhatHappenedFormDef)
-    wndConfig               = GeminiGUI:Create(tConfigFormDef)
-    wndRaidLeader           = GeminiGUI:Create(tRaidLeaderFormDef)
-    wndPlayerNameClickable  = GeminiGUI:Create(tPlayerNameClickable)
-
-
+    -- Slash commands
     Apollo.RegisterSlashCommand("wh", "OnWhatHappenedOn", self)
     Apollo.RegisterSlashCommand("wtf", "OnWhatHappenedOn", self)
 
-    --Event Handlers
-    Apollo.RegisterEventHandler("CombatLogDamage", "FilterByID", self)
+    --Combat Event Handlers
+    Apollo.RegisterEventHandler("CombatLogDamage", "OnCombatLogDamage", self)
     Apollo.RegisterEventHandler("CombatLogDeath", "OnDeath", self)
-    Apollo.RegisterEventHandler("Group_Join", "OnGroupJoin", self)
-    Apollo.RegisterEventHandler("Group_Left", "OnGroupLeft", self)
-    Apollo.RegisterEventHandler("Group_Disbanded", "OnGroupLeft", self)
+    Apollo.RegisterEventHandler("UnitEnteredCombat", "OnEnteredCombat", self)
+
+    -- Configuration Event Handlers
     Apollo.RegisterEventHandler("InterfaceMenuListHasLoaded", "OnInterfaceMenuListHasLoaded", self)
+    Apollo.RegisterEventHandler("WindowManagementReady", "OnWindowManagementReady", self)
+
+    -- Load XML
+    self.xml = XmlDoc.CreateFromFile("WhatHappened.xml")
 end
 
 function WhatHappened:OnEnable()
-    if self.SavedData.profile.ICChannel then
-        self.ICCommChannel = ICCommLib.JoinChannel(self.SavedData.profile.ICChannel, "OnMsgRecieved", self)
-        Print("Joined Raid Channel " .. self.SavedData.profile.ICChannel)
+    tCombatQueue = Queue.new()
+    self.wndWhat = Apollo.LoadForm(self.xml, "WhatWindow", nil, self)
+
+    -- Colors Setup
+    local wndColorList = self.wndWhat:FindChild("OptionsSubForm:ColorsList")
+    for strColorName, strColorHex in pairs(self.db.profile.color) do
+        tColors["cr" .. strColorName] = ApolloColor.new(strColorHex)
+        local wndColor = Apollo.LoadForm(self.xml, "ColorItem", wndColorList, self)
+        wndColor:SetText(strColorName)
+        wndColor:FindChild("ColorSwatch"):SetBGColor(strColorHex)
+    end
+    wndColorList:ArrangeChildrenVert(0)
+
+    -- Setup ICComm
+    if self.db.profile.ICChannel and self.db.profile.ICChannel ~= "" then
+        self.ICCommChannel = ICCommLib.JoinChannel(self.db.profile.ICChannel, "OnMsgRecieved", self)
+    end
+    self.wndWhat:FindChild("OptionsSubForm:ChannelSettings:ChannelInput"):SetText(self.db.profile.ICChannel or "")
+    self.wndWhat:FindChild("OptionsSubForm:ChannelSettings:LeaderBtn"):SetCheck(self.db.profile.bRaidLeader)
+
+    -- Set Current NumMessages
+    self.wndWhat:FindChild("OptionsSubForm:CombatHistory:HistoryCount"):SetText(self.db.profile.nNumMessages)
+    self.wndWhat:FindChild("OptionsSubForm:CombatHistory:SliderContainer:SliderBar"):SetValue(self.db.profile.nNumMessages)
+
+    -- Pre populate WhoSelection
+    local strName = GameLib.GetPlayerUnit():GetName()
+    self:AddDeathInfo(strName)
+    self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
+end
+
+-----------------------------------------------------------------------------------------------
+-- Slash Commands
+-----------------------------------------------------------------------------------------------
+-- Define general functions here
+function WhatHappened:OnWhatHappenedOn(strCommand, strParam)
+    if strParam == "reset" then
+        self.db:ResetProfile()
+        return
     end
 end
+
+-----------------------------------------------------------------------------------------------
+-- Event Handlers and Timers
+-----------------------------------------------------------------------------------------------
 
 function WhatHappened:OnInterfaceMenuListHasLoaded()
-    --Event_FireGenericEvent("InterfaceMenuList_NewAddOn", "WhatHappened", {"OnWhatHappenedOn", "WhatHappened", "Crafting_CircuitSprites:sprCircuit_HandStopIcon"})
+    Event_FireGenericEvent("InterfaceMenuList_NewAddOn", "WhatHappened", {"OnWhatHappenedOn", "", "Crafting_CircuitSprites:sprCircuit_HandStopIcon"})
 end
 
-function WhatHappened:OnWhatHappenedOn()
-    if self.SavedData.profile.RaidLeaderMode == true then
-        wndRaidLeaderInst = wndRaidLeader:GetInstance(self)
-    else
-        wndMainInst = wndMain:GetInstance(self)
-    end
-end
-
-function WhatHappened:FilterByID(tEventArgs)
-    Event_FireGenericEvent("SendVarToRover", "tEventArgs", tEventArgs, 0)
-    local PlayerId = GameLib.GetPlayerUnit():GetId()
-    self.tTypeMapping =
-    {
-        [GameLib.CodeEnumDamageType.Physical] 	= Apollo.GetString("DamageType_Physical"),
-        [GameLib.CodeEnumDamageType.Magic] 		= Apollo.GetString("DamageType_Magic"),
-        [GameLib.CodeEnumDamageType.Fall] 		= Apollo.GetString("DamageType_Fall"),
-        [GameLib.CodeEnumDamageType.Suffocate] 	= Apollo.GetString("DamageType_Suffocate"),
-        ["Unknown"] 							= Apollo.GetString("CombatLog_SpellUnknown"),
-        ["UnknownDamageType"] 					= Apollo.GetString("CombatLog_SpellUnknown"),
-    }
-
-    if tEventArgs.unitCaster and tEventArgs.unitCaster ~= nil or GameLib.GetPlayerUnit():IsDead() ~= true then
-            self.AttackerName = tEventArgs.unitCaster:GetName()
-
-            if tEventArgs.unitCaster:GetId() ~= PlayerId then
-                local strResult
-                local strOverkill = 0
-
-                if tEventArgs.nOverkill > 0 then
-                    strOverkill = tEventArgs.nOverkill
-                end
-
-                local strDamageType = Apollo.GetString("CombatLog_UnknownDamageType")
-                if tEventArgs.eDamageType then
-                    strDamageType = self.tTypeMapping[tEventArgs.eDamageType]
-                    if strDamageType == nil then
-                        strDamageType = "Unknown"
-                    end
-                end
-
-
-                if PushCount <= 20 then
-                    strResult = self.AttackerName .."'s " ..  tEventArgs.splCallingSpell:GetName() .. " Has Hit For "
-                            .. tEventArgs.nDamageAmount .. " As " .. strDamageType .. " Damage"
-
-                    if strOverkill ~= 0 then
-                        strResult = strResult ..", OverKill Amount" .. strOverkill
-                    end
-
-                    table.insert(tCombatHistory, strResult)
-                    PushCount = PushCount + 1
-                else
-                    table.remove(tCombatHistory, 1)
-
-                    strResult = self.AttackerName .."'s " ..  tEventArgs.splCallingSpell:GetName() .. " Has Hit For "
-                            .. tEventArgs.nDamageAmount .. " As " .. strDamageType .. " Damage"
-
-                    if strOverkill ~= 0 then
-                        strResult = strResult ..", OverKill Amount" .. strOverkill
-                    end
-                    table.insert(tCombatHistory, strResult)
-                end
-            end
-        end
-end
-
-function WhatHappened:OnClose()
-    if wndRaidLeaderInst ~= nil and wndRaidLeaderInst:IsVisible() ==true then
-        wndRaidLeaderInst:Close()
-    else
-        wndMainInst:Close() -- hide the window
+function WhatHappened:OnWindowManagementReady()
+    -- ChatLog does all its setup when it hears this event.. so we need to wait a little bit for that to finish
+    if self.db.profile.bAttach then
+        atChatTimer = ApolloTimer.Create(0.1, false, "OnChatTimer", self)
     end
 end
 
-function WhatHappened:OnConfig()
-    if not wndConfigInst then
-        wndConfigInst = wndConfig:GetInstance(self,"TooltipStratum")
-    else
-        wndConfigInst:Show(true)
-    end
-
-    local checkbox = wndConfigInst:FindChild("chkRaidLeader")
-    local ShowCheckbox = wndConfigInst:FindChild("chkShowOnDeath")
-
-    if self.SavedData.profile.ICChannel ~= nil then
-        wndConfigInst:FindChild("RaidChannel"):SetText(self.SavedData.profile.ICChannel)
-    end
-    if self.SavedData.profile.RaidLeaderMode == true then
-        checkbox:SetCheck(self.SavedData.profile.RaidLeaderMode)
-    end
-    if self.SavedData.profile.ShowOnDeath == true then
-        ShowCheckbox:SetCheck(self.SavedData.profile.ShowOnDeath)
+function WhatHappened:OnChatTimer()
+    local tChatLog = Apollo.GetAddon("ChatLog")
+    if tChatLog and tChatLog.tChatWindows then
+        tChatLog.tChatWindows[1]:AttachTab(self.wndWhat)
     end
 end
 
-function WhatHappened:OnConfigSave()
-    local RaidChannelInput = wndConfigInst:FindChild("RaidChannel"):GetText()
-    local checkbox = wndConfigInst:FindChild("chkRaidLeader")
-    local ShowCheckbox = wndConfigInst:FindChild("chkShowOnDeath")
+function WhatHappened:OnCombatLogDamage(tEventArgs)
+    local unitMe = GameLib.GetPlayerUnit()
+    -- Self inflicted damage doesn't count!
+    if tEventArgs.unitCaster == unitMe then return end
+    -- We're only tracking damage to ourselves
+    if tEventArgs.unitTarget ~= unitMe then return end
+    -- We don't care about extra damage when we're dead either
+    if unitMe:IsDead() then return end
 
-    if RaidChannelInput == "" then
-        RaidChannelInput = nil
+    tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
+    tEventArgs.unitCaster = nil
+
+    Queue.PushRight(tCombatQueue, tEventArgs)
+    if Queue.Size(tCombatQueue) > self.db.profile.nNumMessages then
+        Queue.PopLeft(tCombatQueue)
     end
-
-    --Get Settings
-    self.SavedData.profile.ICChannel        = RaidChannelInput
-    self.SavedData.profile.RaidLeaderMode   = checkbox:IsChecked()
-    self.SavedData.profile.ShowOnDeath      = ShowCheckbox:IsChecked()
-
-    --Join/leave ICCommLib Channel
-    if self.SavedData.profile.ICChannel ~= nil then
-        self.ICCommChannel = ICCommLib.JoinChannel(self.SavedData.profile.ICChannel, "OnMsgRecieved", self)
-        Print("Joined Raid Channel " .. self.SavedData.profile.ICChannel)
-    elseif self.SavedData.profile.ICChannel == nil then
-        Print("You have left the Raid Channel, You will not recieve messages!")
-    end
-
-    wndConfigInst:Close()
 end
 
 function WhatHappened:OnDeath()
-    local CurrentLine
-    local CurrentRaidLine
-    local strOutput = ""
-    local strRaidOutput = ""
+    local tMessage = {}
+    local strName = GameLib.GetPlayerUnit():GetName()
+    tDeathInfos[strName] = {}
+    local tDeathInfo = tDeathInfos[strName]
+    while Queue.Size(tCombatQueue) > 0 do
+        local tEventArgs = Queue.PopLeft(tCombatQueue)
+        tDeathInfo[#tDeathInfo + 1] = tEventArgs
 
-    if self.SavedData.profile.ShowOnDeath == true then
-        wndMainInst = wndMain:GetInstance(self)
-    end
-
-    for k,v in ipairs(tCombatHistory) do
-        CurrentLine = v --tCombatHistory[k]
-
-        if type(CurrentLine) == "string" and CurrentLine ~= nil then
-            strOutput = strOutput .. CurrentLine .. "\n"
+        if self.ICCommChannel then
+            tMessage[#tMessage + 1] = tEventArgs
         end
     end
-
-    local CombatText = wndMainInst:FindChild("CombatText")
-    CombatText:SetAML(strOutput)
-
-    if self.SavedData.profile.ICChannel ~= nil then
-        self.ICCommChannel:SendMessage({Msg = strOutput})
+    self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
+    GenerateLog(self, strName)
+    if self.ICCommChannel then
+        tMessage._MAJOR = MAJOR
+        tMessage._MINOR = MINOR
+        self.ICCommChannel:SendMessage(tMessage)
     end
-
-    PushCount = 0
 end
 
+function WhatHappened:OnEnteredCombat(unitId, bInCombat)
+    if bInCombat or unitId ~= GameLib.GetPlayerUnit() then return end
+    -- We left combat, clear out the queue
+    tCombatQueue = Queue.new()
+end
+
+---------------------------------------------------------------------------------------------------
+-- Who Functions
+---------------------------------------------------------------------------------------------------
+function WhatHappened:AddDeathInfo(strName)
+    -- Clear out info if already existant
+    if tDeathInfos[strName] then
+        tDeathInfos[strName] = {}
+        return tDeathInfos[strName]
+    end
+
+    tDeathInfos[strName] = {}
+    local wndWhoList = self.wndWhat:FindChild("PlayerWindow:PlayerMenuContent")
+    local wndWhoEntry = Apollo.LoadForm(self.xml, "WhoEntry", wndWhoList, self)
+    wndWhoEntry:FindChild("NameText"):SetText(strName)
+    wndWhoEntry:SetData(strName)
+    wndWhoList:ArrangeChildrenVert(0)
+
+    return tDeathInfos[strName]
+end
+
+function WhatHappened:OnWhoSelect(wndHandler, wndControl, eMouseButton)
+    local wndParent = wndControl:GetParent()
+    local wndMenu = wndParent:FindChild("PlayerWindow")
+
+    if wndHandler:IsChecked() then
+        wndMenu:Invoke()
+    else
+        wndMenu:Close()
+    end
+end
+
+function WhatHappened:OnWhoEntryClick(wndHandler, wndControl, eMouseButton)
+    local strName = wndControl:GetData()
+    self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
+    GenerateLog(self, strName)
+    self.wndWhat:FindChild("WhoButton"):SetCheck(false)
+    wndControl:GetParent():GetParent():Close() -- Ancestor Chain: Btn->PlayerMenuContent->PlayerWindow
+end
+
+---------------------------------------------------------------------------------------------------
+-- Log Display
+---------------------------------------------------------------------------------------------------
+function GenerateLog(self, strName)
+    local tDeathInfo = tDeathInfos[strName]
+    if not tDeathInfo then return end
+
+    local wndWhatLog = self.wndWhat:FindChild("WhatLog")
+    wndWhatLog:DestroyChildren()
+
+    for nIdx, tEventArgs in ipairs(tDeathInfo) do
+        local wndWhatLine = Apollo.LoadForm(self.xml, "WhatLine", wndWhatLog, self)
+        local xml = XmlDoc.new()
+        xml:AddLine(tEventArgs.strCasterName, tColors.crAttacker, self.db.profile.strFontName, "Left")
+        xml:AppendText(": ", tColors.crWhite, self.db.profile.strFontName, "Left")
+        xml:AppendText(tEventArgs.splCallingSpell:GetName(), tColors.crAbility, self.db.profile.strFontName, "Left")
+        xml:AppendText(" for ", tColors.crWhite, self.db.profile.strFontName, "Left")
+        xml:AppendText(tEventArgs.nDamageAmount .. " " .. ktDamageTypeToName[tEventArgs.eDamageType] or "Unknown", tColors.crDamage, self.db.profile.strFontName, "Left")
+        xml:AppendText(" Damage", tColors.crWhite, self.db.profile.strFontName, "Left")
+        if tEventArgs.nOverkill > 0 then
+            xml:AppendText(", Overkill: ", tColors.crWhite, self.db.profile.strFontName, "Left")
+            xml:AppendText(tostring(tEventArgs.nOverkill), tColors.crDamage, self.db.profile.strFontName, "Left")
+        end
+        wndWhatLine:SetDoc(xml)
+        wndWhatLine:SetHeightToContentHeight()
+    end
+    wndWhatLog:ArrangeChildrenVert(0)
+end
+
+---------------------------------------------------------------------------------------------------
+-- ICCommLib Functions
+---------------------------------------------------------------------------------------------------
 function WhatHappened:OnMsgRecieved(channel, tMsg, strSender)
-    Event_FireGenericEvent("SendVarToRover","channel", channel)
-    Event_FireGenericEvent("SendVarToRover","tMsg", tMsg)
-    Event_FireGenericEvent("SendVarToRover","sender", strSender)
-    if wndRaidLeaderInst then
-        self.wndPlayerList = wndRaidLeaderInst:FindChild("RecipientList")
+    if not self.bRaidLeader then return end
+    if tMsg._MAJOR ~= MAJOR then
+        -- Major version changes are non-compatible
+        error(strformat("Incompatible version from: %s, [%s:%s]", strSender, tMsg._MAJOR, tMsg._MINOR))
+    elseif tMsg._MINOR ~= MINOR then
+        -- No other versions right now, but any translations needed would go here
+    end
 
-        tPlayerNameClickable:AddEvent("OnClicked", "OnClicked")
-        local PlayerLabel = self.wndPlayerList:AddChild(wndPlayerNameClickable)
-        PlayerLabel:SetText(strSender)
-        self.wndPlayerList:ArrangeVert()
+    local tDeathInfo = self:AddDeathInfo(strSender)
+
+    for nIdx, tEventArgs in ipairs(tMsg) do
+        tDeathInfo[#tDeathInfo + 1] = tEventArgs
     end
 end
 
-function WhatHappened:SetDefaults()
-    self.defaults =
-    {
-        profile =
-        {
-            RaidLeaderMode  = false,
-            ICChannel       = "testing",
-            ShowOnDeath     = false
-        }
+---------------------------------------------------------------------------------------------------
+-- WhatWindow Options Functions
+---------------------------------------------------------------------------------------------------
+function WhatHappened:OnOptionsToggle(wndHandler, wndControl, eMouseButton)
+    self.wndWhat:FindChild("OptionsSubForm"):Show(wndControl:IsChecked())
+end
+
+function WhatHappened:OnLeaderToggle(wndHandler, wndControl, eMouseButton)
+    self.db.profile.bRaidLeader = wndControl:IsChecked()
+end
+
+function WhatHappened:OnChannelChange(wndHandler, wndControl, strText)
+    if not strText or strText == "" then
+        self.db.profile.ICChannel = ""
+        self.ICCommChannel = nil
+        return
+    end
+
+    -- If we se it to the same, don't do anything
+    if self.db.profile.ICChannel == strText then return end
+
+    self.db.profile.ICChannel = strText
+    self.ICCommChannel = ICCommLib.JoinChannel(strText, "OnMsgRecieved", self)
+end
+
+function WhatHappened:OnHistorySliderChanged(wndHandler, wndControl, fNewValue, fOldValue)
+    local wndCount = self.wndWhat:FindChild("OptionsSubForm:CombatHistory:HistoryCount")
+    local nNewVal = floor(fNewValue)
+    wndCount:SetText(nNewVal)
+    self.db.profile.nNumMessages = nNewVal
+end
+
+function WhatHappened:OnColorUpdate(strColor, wndControl)
+    wndControl:FindChild("ColorSwatch"):SetBGColor(strColor)
+    local strColorName = wndControl:GetText()
+    self.db.profile.color[strColorName] = strColor
+    tColors["cr" .. strColorName] = ApolloColor.new(strColor)
+end
+
+function WhatHappened:OnColorItemClick(wndHandler, wndControl, eMouseButton)
+    local tColorOpts = {
+        callback = "OnColorUpdate",
+        bCustomColor = true,
+        bAlpha = false,
+        strInitialColor = self.db.profile.color[wndControl:GetText()]
     }
-    Print("WhatHappened has been Reset to Defaults!")
+    GeminiColor:ShowColorPicker(self, tColorOpts, wndControl)
 end

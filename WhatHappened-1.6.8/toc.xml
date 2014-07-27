@@ -1,7 +1,0 @@
-<?xml version="1.6.8" encoding="UTF-8"?>
-<Addon Author="Arthmael" APIVersion="9" Name="WhatHappened" Description="">
-    <Script Name="libs/GeminiGUI.lua"/>
-    <Script Name="libs/GeminiDB-1.0.lua"/>
-    <Script Name="libs/GeminiAddon.lua" />
-    <Script Name="WhatHappened.lua"/>
-</Addon>
