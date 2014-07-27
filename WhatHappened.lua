@@ -24,11 +24,13 @@ local Event_FireGenericEvent, Print = Event_FireGenericEvent, Print
 -- WTF Module Definition
 -----------------------------------------------------------------------------------------------
 local WhatHappened = Apollo.GetPackage("Gemini:Addon-1.1").tPackage:NewAddon("WhatHappened", false, {"ChatLog"})
-local GeminiColor
 
 -----------------------------------------------------------------------------------------------
 -- Locals
 -----------------------------------------------------------------------------------------------
+-- Packages/Addons
+local GeminiColor, tChatLog
+local strChatAddon = "ChatLog"
 -- Array to contain death logs
 local tDeathInfos = {}
 -- Queue for keeping track of Combat events
@@ -166,6 +168,21 @@ function WhatHappened:OnEnable()
     local strName = GameLib.GetPlayerUnit():GetName()
     self:AddDeathInfo(strName)
     self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
+
+    -- Get reference to ChatLog addon, or its replacement
+    tChatLog = Apollo.GetAddon(strChatAddon)
+end
+
+function WhatHappened:OnDependencyError(strDep, strError)
+    if strDep == "ChatLog" then
+        local tReplaced = Apollo.GetReplacement(strDep)
+        if #tReplaced ~= 1 then
+            return false
+        end
+        strChatAddon = tReplaced[1]
+        return true
+    end
+    return false
 end
 
 -----------------------------------------------------------------------------------------------
@@ -195,7 +212,6 @@ function WhatHappened:OnWindowManagementReady()
 end
 
 function WhatHappened:OnChatTimer()
-    local tChatLog = Apollo.GetAddon("ChatLog")
     if tChatLog and tChatLog.tChatWindows then
         tChatLog.tChatWindows[1]:AttachTab(self.wndWhat)
     end
