@@ -58,6 +58,7 @@ local ktDamageTypeToName = {
 
 local tDBDefaults = {
     profile = {
+        strFontName  = "Nameplates",
         nNumMessages = 20,
         bAttach      = true,
         bRaidLeader  = false,
