@@ -275,6 +275,7 @@ function WhatHappened:OnWhoEntryClick(wndHandler, wndControl, eMouseButton)
     local strName = wndControl:GetData()
     self.wndWhat:FindChild("WhoButton:WhoText"):SetText(strName)
     GenerateLog(self, strName)
+    self.wndWhat:FindChild("WhoButton"):SetCheck(false)
     wndControl:GetParent():GetParent():Close() -- Ancestor Chain: Btn->PlayerMenuContent->PlayerWindow
 end
 
