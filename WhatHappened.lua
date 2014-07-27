@@ -176,10 +176,11 @@ end
 function WhatHappened:OnDependencyError(strDep, strError)
     if strDep == "ChatLog" then
         local tReplaced = Apollo.GetReplacement(strDep)
-        if #tReplaced ~= 1 then
-            return false
+        for i=1, #tReplaced do
+            if Apollo.GetAddonInfo(tReplaced[i]).bRunning == 1 then
+                strChatAddon = {tReplaced[i]}
+            end
         end
-        strChatAddon = tReplaced[1]
         return true
     end
     return false
