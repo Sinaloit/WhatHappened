@@ -229,7 +229,9 @@ function WhatHappened:OnCombatLogDamage(tEventArgs)
     -- We don't care about extra damage when we're dead either
     if unitMe:IsDead() then return end
 
-    tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
+    if tEventArgs.unitCaster ~= nil then
+        tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
+    end
     tEventArgs.unitCaster = nil
 
     Queue.PushRight(tCombatQueue, tEventArgs)
