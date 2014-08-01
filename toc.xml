@@ -1,4 +1,4 @@
-<?xml version="1.6.5" encoding="UTF-8"?>
+<?xml version="2.0.1" encoding="UTF-8"?>
 <Addon Author="Arthmael" APIVersion="9" Name="WhatHappened" Description="">
     <Script Name="libs/LibApolloFixes-1.0/LibApolloFixes-1.0.lua"/>
     <Script Name="libs/GeminiDB-1.0.lua"/>

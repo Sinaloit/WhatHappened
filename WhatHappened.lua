@@ -318,7 +318,7 @@ function GenerateLog(self, strName)
     for nIdx, tEventArgs in ipairs(tDeathInfo) do
         local wndWhatLine = Apollo.LoadForm(self.xml, "WhatLine", wndWhatLog, self)
         local xml = XmlDoc.new()
-        if tEventArgs.strCasterName == nil then
+        if tEventArgs.unitCaster == nil then
             return end
         xml:AddLine(tEventArgs.strCasterName, tColors.crAttacker, self.db.profile.strFontName, "Left")
         xml:AppendText(": ", tColors.crWhite, self.db.profile.strFontName, "Left")
