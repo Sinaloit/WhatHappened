@@ -31,6 +31,7 @@ local WhatHappened = Apollo.GetPackage("Gemini:Addon-1.1").tPackage:NewAddon("Wh
 -- Packages/Addons
 local GeminiColor, tChatLog
 local strChatAddon = "ChatLog"
+
 -- Array to contain death logs
 local tDeathInfos = {}
 -- Queue for keeping track of Combat events
@@ -140,6 +141,7 @@ function WhatHappened:OnInitialize()
 end
 
 function WhatHappened:OnEnable()
+
     tCombatQueue = Queue.new()
     self.wndWhat = Apollo.LoadForm(self.xml, "WhatWindow", nil, self)
 
@@ -226,6 +228,7 @@ function WhatHappened:OnCombatLogDamage(tEventArgs)
     if tEventArgs.unitTarget ~= unitMe then return end
     -- We don't care about extra damage when we're dead either
     if unitMe:IsDead() then return end
+
 
     tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
     tEventArgs.unitCaster = nil
@@ -316,7 +319,9 @@ function GenerateLog(self, strName)
     for nIdx, tEventArgs in ipairs(tDeathInfo) do
         local wndWhatLine = Apollo.LoadForm(self.xml, "WhatLine", wndWhatLog, self)
         local xml = XmlDoc.new()
-        xml:AddLine(tEventArgs.strCasterName, tColors.crAttacker, self.db.profile.strFontName, "Left")
+        if tEventArgs.unitCaster == nil then
+            return end
+        xml:AddLine(tEventArgs.strCasterName or "Unknown", tColors.crAttacker, self.db.profile.strFontName, "Left")
         xml:AppendText(": ", tColors.crWhite, self.db.profile.strFontName, "Left")
         xml:AppendText(tEventArgs.splCallingSpell:GetName(), tColors.crAbility, self.db.profile.strFontName, "Left")
         xml:AppendText(" for ", tColors.crWhite, self.db.profile.strFontName, "Left")
