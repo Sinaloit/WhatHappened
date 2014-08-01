@@ -230,7 +230,7 @@ function WhatHappened:OnCombatLogDamage(tEventArgs)
     if unitMe:IsDead() then return end
 
 
-    tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
+    tEventArgs.strCasterName = tEventArgs.unitCaster and tEventArgs.unitCaster:GetName() or "Unknown"
     tEventArgs.unitCaster = nil
 
     Queue.PushRight(tCombatQueue, tEventArgs)
@@ -321,7 +321,7 @@ function GenerateLog(self, strName)
         local xml = XmlDoc.new()
         if tEventArgs.unitCaster == nil then
             return end
-        xml:AddLine(tEventArgs.strCasterName or "Unknown", tColors.crAttacker, self.db.profile.strFontName, "Left")
+        xml:AddLine(tEventArgs.strCasterName, tColors.crAttacker, self.db.profile.strFontName, "Left")
         xml:AppendText(": ", tColors.crWhite, self.db.profile.strFontName, "Left")
         xml:AppendText(tEventArgs.splCallingSpell:GetName(), tColors.crAbility, self.db.profile.strFontName, "Left")
         xml:AppendText(" for ", tColors.crWhite, self.db.profile.strFontName, "Left")
