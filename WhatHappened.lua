@@ -229,9 +229,8 @@ function WhatHappened:OnCombatLogDamage(tEventArgs)
     -- We don't care about extra damage when we're dead either
     if unitMe:IsDead() then return end
 
-    if tEventArgs.unitCaster ~= nil then
-        tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
-    end
+
+    tEventArgs.strCasterName = tEventArgs.unitCaster:GetName()
     tEventArgs.unitCaster = nil
 
     Queue.PushRight(tCombatQueue, tEventArgs)
@@ -322,7 +321,7 @@ function GenerateLog(self, strName)
         local xml = XmlDoc.new()
         if tEventArgs.unitCaster == nil then
             return end
-        xml:AddLine(tEventArgs.strCasterName, tColors.crAttacker, self.db.profile.strFontName, "Left")
+        xml:AddLine(tEventArgs.strCasterName or "Unknown", tColors.crAttacker, self.db.profile.strFontName, "Left")
         xml:AppendText(": ", tColors.crWhite, self.db.profile.strFontName, "Left")
         xml:AppendText(tEventArgs.splCallingSpell:GetName(), tColors.crAbility, self.db.profile.strFontName, "Left")
         xml:AppendText(" for ", tColors.crWhite, self.db.profile.strFontName, "Left")
